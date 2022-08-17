@@ -56,6 +56,8 @@ impl MockReader {
     pub fn parent_state_root(&self) -> HashValue {
         self.parent_state_root.get()
     }
+
+    pub fn snapshot(&self) {}
 }
 
 impl StateView for MockReader {

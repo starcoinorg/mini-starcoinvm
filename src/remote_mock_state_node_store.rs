@@ -15,6 +15,8 @@ impl RemoteMockStateNodeStore {
     pub fn new(client: Arc<RpcClient>, store: Arc<MockStateNodeStore>) -> Self {
         Self { client, store }
     }
+
+    pub fn snapshot(&self) {}
 }
 
 impl StateNodeStore for RemoteMockStateNodeStore {
