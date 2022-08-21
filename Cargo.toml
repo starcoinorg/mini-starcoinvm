@@ -6,14 +6,19 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.41"
 
-starcoin-vm-types = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2c0b225d42369aa72750340545dba962", package="starcoin-vm-types"}
-starcoin-executor = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2c0b225d42369aa72750340545dba962", package="starcoin-executor"}
-starcoin-state-api = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2c0b225d42369aa72750340545dba962", package="starcoin-state-api"}
-starcoin-state-store-api = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2c0b225d42369aa72750340545dba962", package="starcoin-state-store-api"}
-starcoin-statedb = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2c0b225d42369aa72750340545dba962", package="starcoin-statedb"}
-starcoin-state-tree = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2c0b225d42369aa72750340545dba962", package="starcoin-state-tree"}
-starcoin-rpc-client = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2c0b225d42369aa72750340545dba962", package="starcoin-rpc-client"}
-starcoin-types = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2c0b225d42369aa72750340545dba962", package="starcoin-types"}
+starcoin-vm-types = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="starcoin-vm-types"}
+starcoin-executor = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="starcoin-executor"}
+starcoin-state-api = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="starcoin-state-api"}
+starcoin-state-store-api = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="starcoin-state-store-api"}
+starcoin-statedb = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="starcoin-statedb"}
+starcoin-state-tree = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="starcoin-state-tree"}
+starcoin-rpc-client = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="starcoin-rpc-client"}
+starcoin-types = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="starcoin-types"}
+bcs-ext = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d86d34299a0d6259bb56edf9cb", package="bcs-ext"}
+
+starcoin-crypto = { git = "https://github.com/starcoinorg/starcoin-crypto", rev = "d871dfb4216f034ee334a575926c101574d9d6dc", package="diem-crypto"}
+serde = {version = "1.0.130", default-features = false}
+
 
 #starcoin-vm-types = {path = "F:\\rust\\starcoin\\starcoin\\vm\\types"}
 #starcoin-executor = {path = "F:\\rust\\starcoin\\starcoin\\executor"}
@@ -24,4 +29,3 @@ starcoin-types = {git = "https://github.com/strawWoo/starcoin", rev = "2388fcda2
 #starcoin-rpc-client = {path = "F:\\rust\\starcoin\\starcoin\\rpc\\client"}
 #starcoin-types = {path = "F:\\rust\\starcoin\\starcoin\\types"}
 
-starcoin-crypto = { git = "https://github.com/starcoinorg/starcoin-crypto", rev = "d871dfb4216f034ee334a575926c101574d9d6dc", package="diem-crypto"}

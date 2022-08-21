@@ -1,7 +1,7 @@
-use crate::MockReader;
 use anyhow::Result;
 use starcoin_crypto::HashValue;
 use starcoin_state_api::{ChainStateReader, ChainStateWriter, StateWithProof};
+use starcoin_state_store_api::StateNodeStore;
 use starcoin_state_tree::AccountStateSetIterator;
 use starcoin_statedb::ChainStateDB;
 use starcoin_types::account_address::AccountAddress;
@@ -10,61 +10,53 @@ use starcoin_types::state_set::{AccountStateSet, ChainStateSet};
 use starcoin_vm_types::access_path::AccessPath;
 use starcoin_vm_types::state_view::StateView;
 use starcoin_vm_types::write_set::WriteSet;
-use std::rc::Rc;
+use std::sync::Arc;
 
-pub struct MockChainState<R> {
-    reader: Rc<R>,
-    writer: ChainStateDB,
-    mock_reader: Option<Rc<MockReader>>,
+pub struct MockChainState<S> {
+    state_view: S,
+    chain_state_db: ChainStateDB,
 }
 
-impl<R> MockChainState<R>
-where
-    R: ChainStateReader,
-{
+impl<S: StateView> MockChainState<S> {
     pub fn new(
-        reader: Rc<R>,
-        writer: ChainStateDB,
-        mock_reader: Option<Rc<MockReader>>,
-    ) -> MockChainState<R> {
+        state_root: HashValue,
+        state_view: S,
+        store: impl StateNodeStore + 'static,
+    ) -> MockChainState<S> {
         MockChainState {
-            reader,
-            writer,
-            mock_reader,
+            state_view,
+            chain_state_db: ChainStateDB::new(Arc::new(store), Some(state_root)),
         }
     }
 }
 
-impl<R> ChainStateWriter for MockChainState<R> {
+impl<S> ChainStateWriter for MockChainState<S> {
     fn set(&self, access_path: &AccessPath, value: Vec<u8>) -> Result<()> {
-        self.writer.set(access_path, value)
+        self.chain_state_db.set(access_path, value)
     }
 
     fn remove(&self, access_path: &AccessPath) -> Result<()> {
-        self.writer.remove(access_path)
+        self.chain_state_db.remove(access_path)
     }
 
     fn apply(&self, state_set: ChainStateSet) -> Result<()> {
-        self.writer.apply(state_set)
+        self.chain_state_db.apply(state_set)
     }
 
     fn apply_write_set(&self, write_set: WriteSet) -> Result<()> {
-        self.writer.apply_write_set(write_set)
+        self.chain_state_db.apply_write_set(write_set)
     }
 
     fn commit(&self) -> Result<HashValue> {
-        self.writer.commit()
+        self.chain_state_db.commit()
     }
 
     fn flush(&self) -> Result<()> {
-        self.writer.flush()
+        self.chain_state_db.flush()
     }
 }
 
-impl<R> ChainStateReader for MockChainState<R>
-where
-    R: ChainStateReader,
-{
+impl<S: StateView> ChainStateReader for MockChainState<S> {
     fn get_with_proof(&self, _: &AccessPath) -> Result<StateWithProof> {
         unimplemented!()
     }
@@ -78,7 +70,7 @@ where
     }
 
     fn state_root(&self) -> HashValue {
-        self.writer.state_root()
+        self.chain_state_db.state_root()
     }
 
     fn dump(&self) -> Result<ChainStateSet> {
@@ -90,16 +82,9 @@ where
     }
 }
 
-impl<R> StateView for MockChainState<R>
-where
-    R: ChainStateReader,
-{
+impl<S: StateView> StateView for MockChainState<S> {
     fn get(&self, access_path: &AccessPath) -> Result<Option<Vec<u8>>> {
-        let data_path = self.reader.get(access_path)?;
-        if let Some(mock) = &self.mock_reader {
-            mock.put_data_path(access_path.clone(), data_path.clone());
-        }
-        Ok(data_path)
+        Ok(self.state_view.get(access_path)?)
     }
 
     fn is_genesis(&self) -> bool {

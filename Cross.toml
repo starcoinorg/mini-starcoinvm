@@ -1,10 +1,10 @@
 [build]
-default-target="mips-unknown-linux-musl"
+default-target="mips64el-unknown-linux-gnuabi64"
 
-[target.mips-unknown-linux-musl.env]
+[target.mips64el-unknown-linux-gnuabi64.env]
 passthrough = [
     "RUST_BACKTRACE=1", "OPENSSL_DIR=/usr/local/ssl"
 ]
 
-[target.mips-unknown-linux-musl]
+[target.mips64el-unknown-linux-gnuabi64]
 dockerfile = "./Dockerfile"

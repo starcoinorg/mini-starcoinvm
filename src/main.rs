@@ -1,89 +1,61 @@
+use crate::mock_state_view::{FileStateView, RemoteStateView};
+use block_fetch::BlockFetch;
 use mock_chain_state::MockChainState;
-use mock_reader::MockReader;
-use remote_mock_state_node_store::RemoteMockStateNodeStore;
+use mock_state_node_store::MockStateNodeStore;
 use starcoin_crypto::HashValue;
 use starcoin_executor;
 use starcoin_rpc_client::RpcClient;
-use starcoin_rpc_client::StateRootOption::BlockNumber;
-use starcoin_state_api::{ChainStateReader, ChainStateWriter};
-use starcoin_state_tree::mock::MockStateNodeStore;
-use starcoin_statedb::ChainStateDB;
-use starcoin_types::block::Block;
-use std::collections::HashMap;
-use std::env;
-use std::rc::Rc;
+use std::borrow::Borrow;
+use std::str::FromStr;
 use std::sync::Arc;
 
+mod block_fetch;
 mod mock_chain_state;
-mod mock_reader;
-mod remote_mock_state_node_store;
+mod mock_state_node_store;
+mod mock_state_view;
 mod types;
+mod utils;
 
 fn main() {
-    let oracle_preimage: HashMap<String, String> = HashMap::new();
-    println!("oracle_preimage: {:?}", oracle_preimage);
-    let mock_reader = Rc::new(MockReader::new());
-    let mock_store = Arc::new(MockStateNodeStore::new());
+    let config_client_url = "ws://192.168.1.101:9870";
+    let block_hash = "0xd84e80411d3cbaf09a4c2eeebaa941f351191292d16ec92965368863e636f27c";
 
-    let args: Vec<String> = env::args().collect();
-    let block_number = args.get(1);
-    if block_number.is_some() {
-        // ws://main.seed.starcoin.org:9870
-        let client = Arc::new(RpcClient::connect_websocket("ws://127.0.0.1:9870").unwrap());
-        let block_number: u64 = block_number.unwrap().parse::<u64>().unwrap() as u64;
+    let block;
+    let mock_chain_state;
 
-        // reader build
-        let parent_block_number = BlockNumber(block_number - 1);
-        let reader = Rc::new(client.state_reader(parent_block_number).unwrap());
-
-        // writer build
-        let remote_mock_store = Arc::new(RemoteMockStateNodeStore::new(
-            client.clone(),
-            mock_store.clone(),
-        ));
-        let parent_state_root = reader.state_root();
-        let writer = ChainStateDB::new(remote_mock_store.clone(), Some(parent_state_root));
-
-        // tx build
-        let block = remote_block(block_number, client.clone());
-
-        // mock reader build
-        let mock_reader = mock_reader.clone();
-        mock_reader.set_parent_state_root(parent_state_root);
-        mock_reader.set_block(block);
-
-        let mock_chain_state = MockChainState::new(reader, writer, Some(mock_reader.clone()));
-        commit(&mock_chain_state, mock_reader.clone());
-
-        mock_reader.snapshot();
-        remote_mock_store.snapshot();
-        return;
-    } else {
-        let writer = ChainStateDB::new(mock_store, Some(mock_reader.parent_state_root()));
-        let mock_chain_state = MockChainState::new(mock_reader.clone(), writer, None);
-        commit(&mock_chain_state, mock_reader);
+    #[cfg(target_arch = "x86_64")]
+    let client;
+    #[cfg(target_arch = "x86_64")]
+    {
+        utils::init_file_path(HashValue::from_str(block_hash).unwrap()).unwrap();
+        client = Arc::new(RpcClient::connect_websocket(config_client_url).unwrap());
+        block = BlockFetch::new_from_remote(block_hash, client.clone());
+        let state_view = RemoteStateView::new(
+            client.borrow(),
+            block.parent_block_hash(),
+            block.block_hash(),
+        );
+        mock_chain_state = MockChainState::new(
+            state_view.state_root(),
+            state_view,
+            MockStateNodeStore::new_remote_store(client.clone(), block.block_hash()),
+        );
     }
-}
 
-fn remote_block(block_number: u64, client: Arc<RpcClient>) -> Block {
-    client
-        .chain_get_block_by_number(block_number, None)
-        .unwrap()
-        .unwrap()
-        .try_into()
-        .unwrap()
-}
+    #[cfg(target_arch = "mips")]
+    {
+        block = BlockFetch::new_from_file(block_hash);
+        let state_view = FileStateView::new(block.block_hash());
+        mock_chain_state = MockChainState::new(
+            state_view.state_root(),
+            state_view,
+            MockStateNodeStore::new_file_store(block.block_hash()),
+        );
+    }
 
-fn commit<S: ChainStateReader + ChainStateWriter>(
-    mock_chain_state: &S,
-    mock_reader: Rc<MockReader>,
-) {
-    let executor_data = starcoin_executor::block_execute(
-        mock_chain_state,
-        mock_reader.transactions(),
-        u64::MAX,
-        None,
-    )
-    .unwrap();
-    assert_eq!(mock_reader.state_root(), executor_data.state_root);
+    let executor_data =
+        starcoin_executor::block_execute(&mock_chain_state, block.transactions(), u64::MAX, None)
+            .unwrap();
+    // print!("block: {:?}, executor_data: {:?}", block, executor_data);
+    assert_eq!(block.state_root(), executor_data.state_root);
 }
