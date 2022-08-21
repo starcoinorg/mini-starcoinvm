@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::file_helper;
 use starcoin_crypto::HashValue;
 use starcoin_rpc_client::{RemoteStateReader, RpcClient, StateRootOption};
 use starcoin_state_api::ChainStateReader;
@@ -24,7 +24,7 @@ impl<'a> RemoteStateView<'a> {
         let state_view = client
             .state_reader(StateRootOption::BlockHash(block_hash))
             .unwrap();
-        utils::serialize_to_file(
+        file_helper::serialize_to_file(
             block_hash_mapping_file,
             BLOCK_STATE_ROOT,
             &state_view.state_root(),
@@ -44,12 +44,16 @@ impl<'a> RemoteStateView<'a> {
 
 impl<'a> StateView for RemoteStateView<'a> {
     fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
-        self.state_view.get(access_path).map(|op| {
-            op.map(|state| {
-                utils::serialize_to_file(self.block_hash_mapping_file, access_path, &state)
+        self.state_view.get(access_path).map(|op| match op {
+            None => {
+                file_helper::skip_step();
+                None
+            }
+            Some(state) => {
+                file_helper::serialize_to_file(self.block_hash_mapping_file, access_path, &state)
                     .unwrap();
-                state
-            })
+                Some(state)
+            }
         })
     }
 
@@ -66,15 +70,13 @@ impl FileStateView {
     }
 
     pub fn state_root(&self) -> HashValue {
-        utils::deserialize_from_file_for_block_state_root(self.0, BLOCK_STATE_ROOT).unwrap()
+        file_helper::deserialize_from_file_for_block_state_root(self.0, BLOCK_STATE_ROOT).unwrap()
     }
 }
 
 impl StateView for FileStateView {
     fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
-        Ok(Some(
-            utils::deserialize_from_file_for_access_path(self.0, access_path).unwrap(),
-        ))
+        file_helper::deserialize_from_file_for_vev_u8(self.0, access_path)
     }
 
     fn is_genesis(&self) -> bool {

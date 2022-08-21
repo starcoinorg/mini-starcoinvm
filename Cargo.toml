@@ -18,7 +18,7 @@ bcs-ext = {git = "https://github.com/strawWoo/starcoin", rev = "b2bc097f288c63d8
 
 starcoin-crypto = { git = "https://github.com/starcoinorg/starcoin-crypto", rev = "d871dfb4216f034ee334a575926c101574d9d6dc", package="diem-crypto"}
 serde = {version = "1.0.130", default-features = false}
-
+clap = { version = "3.1.18", features = ["derive"] }
 
 #starcoin-vm-types = {path = "F:\\rust\\starcoin\\starcoin\\vm\\types"}
 #starcoin-executor = {path = "F:\\rust\\starcoin\\starcoin\\executor"}

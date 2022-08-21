@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::file_helper;
 use anyhow::Result;
 use starcoin_crypto::HashValue;
 use starcoin_rpc_client::RpcClient;
@@ -16,9 +16,7 @@ impl MockStateNodeStore {
         MockStateNodeStore {
             store: starcoin_state_tree::mock::MockStateNodeStore::new(),
             handler: Box::new(move |node_hash: HashValue| {
-                Ok(Some(
-                    utils::deserialize_from_file_for_state_node(block_hash, &node_hash).unwrap(),
-                ))
+                file_helper::deserialize_from_file_for_vev_u8(block_hash, &node_hash)
             }),
         }
     }
@@ -30,13 +28,23 @@ impl MockStateNodeStore {
         MockStateNodeStore {
             store: starcoin_state_tree::mock::MockStateNodeStore::new(),
             handler: Box::new(move |node_hash: HashValue| {
-                client.get_state_node_by_node_hash(node_hash).map(|op| {
-                    op.map(|state_node| {
-                        utils::serialize_to_file(block_hash_mapping_file, &node_hash, &state_node)
+                client
+                    .get_state_node_by_node_hash(node_hash)
+                    .map(|op| match op {
+                        None => {
+                            file_helper::skip_step();
+                            None
+                        }
+                        Some(state_node) => {
+                            file_helper::serialize_to_file(
+                                block_hash_mapping_file,
+                                &node_hash,
+                                &state_node,
+                            )
                             .unwrap();
-                        state_node
+                            Some(state_node)
+                        }
                     })
-                })
             }),
         }
     }

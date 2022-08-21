@@ -1,4 +1,4 @@
-use crate::{types, utils};
+use crate::{file_helper, types};
 use bcs_ext;
 use starcoin_crypto::HashValue;
 use starcoin_rpc_client::StateRootOption::BlockHash;
@@ -14,16 +14,13 @@ pub(crate) struct BlockFetch {
 }
 
 impl BlockFetch {
-    pub fn new_from_file(block_hash: &str) -> BlockFetch {
-        let block_hash = HashValue::from_str(block_hash).unwrap();
+    pub fn new_from_file(block_hash: HashValue) -> BlockFetch {
         BlockFetch {
-            block: utils::deserialize_from_file_for_block(block_hash, &block_hash).unwrap(),
+            block: file_helper::deserialize_from_file_for_block(block_hash, &block_hash).unwrap(),
         }
     }
 
-    pub fn new_from_remote(block_hash: &str, client: Arc<RpcClient>) -> BlockFetch {
-        let block_hash = HashValue::from_str(block_hash).unwrap();
-
+    pub fn new_from_remote(block_hash: HashValue, client: Arc<RpcClient>) -> BlockFetch {
         let block: Block = client
             .chain_get_block_by_hash(block_hash, None)
             .unwrap()
@@ -31,7 +28,7 @@ impl BlockFetch {
             .try_into()
             .unwrap();
 
-        utils::serialize_to_file(block.id(), &block.id(), &block).unwrap();
+        file_helper::serialize_to_file(block.id(), &block.id(), &block).unwrap();
         BlockFetch { block }
     }
 

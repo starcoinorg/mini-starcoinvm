@@ -7,7 +7,13 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 
-static mut NONCE: Cell<u8> = Cell::new(0u8);
+static mut STEPS: Cell<u32> = Cell::new(0u32);
+
+pub fn skip_step() {
+    unsafe {
+        get_and_inc();
+    }
+}
 
 pub fn init_file_path(block_hash: HashValue) -> std::io::Result<()> {
     fs::create_dir_all(block_hash.to_hex())
@@ -20,18 +26,12 @@ where
 {
     let mut key_bytes = bcs_ext::to_bytes(key).unwrap();
     unsafe {
-        key_bytes.push(NONCE.get());
-        NONCE.set(NONCE.get() + 1);
-        println!("nonce: {:?}", NONCE.get());
+        append_nonce(&mut key_bytes);
     }
     let file_name = format!(
         "./{}/{}",
         block_hash.to_hex(),
         HashValue::sha3_256_of(key_bytes.as_slice()).to_hex()
-    );
-    println!(
-        "write file_name: {:?}, key: {:?}, obj: {:?}",
-        file_name, key, obj
     );
     let file = File::options()
         .create(true)
@@ -52,56 +52,65 @@ pub fn deserialize_from_file_for_block_state_root<K>(
 where
     K: ?Sized + Serialize + Debug,
 {
-    bcs_ext::from_bytes(&(read_from_file(block_hash, key).as_slice()))
+    bcs_ext::from_bytes(&(read_from_file(block_hash, key).unwrap().as_slice()))
 }
 
 pub fn deserialize_from_file_for_block<K>(block_hash: HashValue, key: &K) -> anyhow::Result<Block>
 where
     K: ?Sized + Serialize + Debug,
 {
-    bcs_ext::from_bytes(&(read_from_file(block_hash, key).as_slice()))
+    bcs_ext::from_bytes(&(read_from_file(block_hash, key).unwrap().as_slice()))
 }
 
-pub fn deserialize_from_file_for_state_node<K>(
+pub fn deserialize_from_file_for_vev_u8<K>(
     block_hash: HashValue,
     key: &K,
-) -> anyhow::Result<Vec<u8>>
+) -> anyhow::Result<Option<Vec<u8>>>
 where
     K: ?Sized + Serialize + Debug,
 {
-    bcs_ext::from_bytes(&(read_from_file(block_hash, key).as_slice()))
+    let serialized_op = read_from_file(block_hash, key);
+    match serialized_op {
+        None => Ok(None),
+        Some(serialized) => match bcs_ext::from_bytes(&(serialized.as_slice())) {
+            Ok(v) => Ok(Some(v)),
+            Err(e) => Err(e),
+        },
+    }
 }
 
-pub fn deserialize_from_file_for_access_path<K>(
-    block_hash: HashValue,
-    key: &K,
-) -> anyhow::Result<Vec<u8>>
-where
-    K: ?Sized + Serialize + Debug,
-{
-    bcs_ext::from_bytes(&(read_from_file(block_hash, key).as_slice()))
-}
-
-fn read_from_file<'a, K>(block_hash: HashValue, key: &K) -> Vec<u8>
+fn read_from_file<'a, K>(block_hash: HashValue, key: &K) -> Option<Vec<u8>>
 where
     K: ?Sized + Serialize + Debug,
 {
     let mut key_bytes = bcs_ext::to_bytes(key).unwrap();
     unsafe {
-        key_bytes.push(NONCE.get());
-        NONCE.set(NONCE.get() + 1);
-        println!("nonce: {:?}", NONCE.get());
+        append_nonce(&mut key_bytes);
     }
     let file_name = format!(
         "./{}/{}",
         block_hash.to_hex(),
         HashValue::sha3_256_of(key_bytes.as_slice()).to_hex()
     );
-    println!("read file_name: {:?}, key: {:?}", file_name, key);
-    let file = File::options().read(true).open(file_name).unwrap();
+    let file_op = File::options().read(true).open(file_name);
 
-    let mut read = BufReader::new(file);
-    let mut serialized = vec![];
-    read.read_to_end(&mut serialized).unwrap();
-    serialized
+    match file_op {
+        Ok(file) => {
+            let mut read = BufReader::new(file);
+            let mut serialized = vec![];
+            read.read_to_end(&mut serialized).unwrap();
+            Some(serialized)
+        }
+        Err(_) => None,
+    }
+}
+
+unsafe fn get_and_inc() -> u32 {
+    let step = STEPS.get();
+    STEPS.set(step + 1);
+    step
+}
+
+unsafe fn append_nonce(u: &mut Vec<u8>) {
+    u.append(&mut get_and_inc().to_be_bytes().to_vec());
 }
