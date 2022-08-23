@@ -1,6 +1,7 @@
 use crate::file_helper;
 use anyhow::Result;
 use starcoin_crypto::HashValue;
+#[cfg(feature = "from_remote")]
 use starcoin_rpc_client::RpcClient;
 use starcoin_state_store_api::{StateNode, StateNodeStore};
 use std::collections::BTreeMap;
@@ -12,6 +13,7 @@ pub(crate) struct MockStateNodeStore {
 }
 
 impl MockStateNodeStore {
+    #[cfg(feature = "from_file")]
     pub fn new_file_store(block_hash: HashValue) -> impl StateNodeStore {
         MockStateNodeStore {
             store: starcoin_state_tree::mock::MockStateNodeStore::new(),
@@ -21,6 +23,7 @@ impl MockStateNodeStore {
         }
     }
 
+    #[cfg(feature = "from_remote")]
     pub fn new_remote_store(
         client: Arc<RpcClient>,
         block_hash_mapping_file: HashValue,

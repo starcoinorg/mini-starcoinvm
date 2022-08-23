@@ -1,16 +1,20 @@
-use crate::mock_state_view::{FileStateView, RemoteStateView};
-use block_fetch::BlockFetch;
+#[cfg(feature = "from_file")]
+use crate::mock_state_view::FileStateView;
+#[cfg(feature = "from_remote")]
+use crate::mock_state_view::RemoteStateView;
 use clap::Parser;
 use mock_chain_state::MockChainState;
 use mock_state_node_store::MockStateNodeStore;
 use starcoin_crypto::HashValue;
 use starcoin_executor;
+#[cfg(feature = "from_remote")]
 use starcoin_rpc_client::RpcClient;
+use starcoin_types::block::Block;
+#[cfg(feature = "from_remote")]
 use std::borrow::Borrow;
-use std::str::FromStr;
+#[cfg(feature = "from_remote")]
 use std::sync::Arc;
 
-mod block_fetch;
 mod file_helper;
 mod mock_chain_state;
 mod mock_state_node_store;
@@ -21,7 +25,7 @@ mod types;
 struct Options {
     #[clap(short = 'b', long = "block")]
     block_hash: HashValue,
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(feature = "from_remote")]
     #[clap(short = 'n', long = "network")]
     /// Maybe: main, halley, local, barnard
     chain_network: String,
@@ -34,46 +38,68 @@ fn main() {
     let block;
     let mock_chain_state;
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(feature = "from_remote")]
     let client;
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(feature = "from_remote")]
     {
         let chain_network = match opts.chain_network.to_lowercase().as_str() {
-            "main" => "ws://main1.seed.starcoin.org:9101",
-            "halley" => "ws://halley1.seed.starcoin.org:9101",
+            "main" => "ws://main.seed.starcoin.org:9870",
+            "halley" => "ws://halley.seed.starcoin.org:9870",
             "local" => "ws://192.168.1.101:9870",
-            "barnard" => "ws://barnard1.seed.starcoin.org:9101",
+            "barnard" => "ws://barnard.seed.starcoin.org:9870",
             _ => panic!("network not support yet"),
         };
 
         file_helper::init_file_path(block_hash).unwrap();
         client = Arc::new(RpcClient::connect_websocket(chain_network).unwrap());
-        block = BlockFetch::new_from_remote(block_hash, client.clone());
+        block = new_from_remote(block_hash, client.clone());
         let state_view = RemoteStateView::new(
             client.borrow(),
-            block.parent_block_hash(),
-            block.block_hash(),
+            block.header.parent_hash(),
+            block.header.id(),
         );
         mock_chain_state = MockChainState::new(
             state_view.state_root(),
             state_view,
-            MockStateNodeStore::new_remote_store(client.clone(), block.block_hash()),
+            MockStateNodeStore::new_remote_store(client.clone(), block.header.id()),
         );
     }
 
-    #[cfg(target_arch = "mips")]
+    #[cfg(feature = "from_file")]
     {
-        block = BlockFetch::new_from_file(block_hash);
-        let state_view = FileStateView::new(block.block_hash());
+        block = new_from_file(block_hash);
+        let state_view = FileStateView::new(block.header.id());
         mock_chain_state = MockChainState::new(
             state_view.state_root(),
             state_view,
-            MockStateNodeStore::new_file_store(block.block_hash()),
+            MockStateNodeStore::new_file_store(block.header.id()),
         );
     }
 
-    let executor_data =
-        starcoin_executor::block_execute(&mock_chain_state, block.transactions(), u64::MAX, None)
-            .unwrap();
-    assert_eq!(block.state_root(), executor_data.state_root);
+    let executor_data = starcoin_executor::block_execute(
+        &mock_chain_state,
+        types::try_into_transactions(&block),
+        u64::MAX,
+        None,
+    )
+    .unwrap();
+    assert_eq!(block.header.state_root(), executor_data.state_root);
+}
+
+#[cfg(feature = "from_file")]
+pub fn new_from_file(block_hash: HashValue) -> Block {
+    file_helper::deserialize_from_file_for_block(block_hash, &block_hash).unwrap()
+}
+
+#[cfg(feature = "from_remote")]
+pub fn new_from_remote(block_hash: HashValue, client: Arc<RpcClient>) -> Block {
+    let block: Block = client
+        .chain_get_block_by_hash(block_hash, None)
+        .unwrap()
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    file_helper::serialize_to_file(block.id(), &block.id(), &block).unwrap();
+    block
 }
