@@ -1,10 +1,10 @@
 use starcoin_types::block::Block;
 use starcoin_vm_types::transaction::Transaction;
 
-pub fn try_into_transactions(block: &Block) -> Vec<Transaction> {
+pub fn try_into_transactions(block_parent: &Block, block: &Block) -> Vec<Transaction> {
     let mut t = vec![];
     t.push(Transaction::BlockMetadata(
-        block.to_metadata(block.header.gas_used()),
+        block.to_metadata(block_parent.header.gas_used()),
     ));
     t.extend(
         block

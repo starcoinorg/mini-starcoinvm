@@ -1,53 +1,47 @@
-use crate::file_helper;
+use crate::FileHelper;
 use anyhow::Result;
 use starcoin_crypto::HashValue;
-#[cfg(feature = "from_remote")]
+#[cfg(any(feature = "from_remote", feature = "test"))]
 use starcoin_rpc_client::RpcClient;
 use starcoin_state_store_api::{StateNode, StateNodeStore};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-pub(crate) struct MockStateNodeStore {
+pub struct MockStateNodeStore {
     store: starcoin_state_tree::mock::MockStateNodeStore,
     handler: Box<dyn Fn(HashValue) -> Result<Option<Vec<u8>>> + Send + Sync>,
 }
 
 impl MockStateNodeStore {
-    #[cfg(feature = "from_file")]
-    pub fn new_file_store(block_hash: HashValue) -> impl StateNodeStore {
+    pub fn new_file_store(
+        block_hash: HashValue,
+        file_helper: Arc<FileHelper>,
+    ) -> impl StateNodeStore {
         MockStateNodeStore {
             store: starcoin_state_tree::mock::MockStateNodeStore::new(),
             handler: Box::new(move |node_hash: HashValue| {
-                file_helper::deserialize_from_file_for_vev_u8(block_hash, &node_hash)
+                file_helper.deserialize_from_file_for_vev_u8(block_hash, &node_hash)
             }),
         }
     }
 
-    #[cfg(feature = "from_remote")]
+    #[cfg(any(feature = "from_remote", feature = "test"))]
     pub fn new_remote_store(
+        file_helper: Arc<FileHelper>,
         client: Arc<RpcClient>,
         block_hash_mapping_file: HashValue,
     ) -> impl StateNodeStore {
         MockStateNodeStore {
             store: starcoin_state_tree::mock::MockStateNodeStore::new(),
             handler: Box::new(move |node_hash: HashValue| {
-                client
-                    .get_state_node_by_node_hash(node_hash)
-                    .map(|op| match op {
-                        None => {
-                            file_helper::skip_step();
-                            None
-                        }
-                        Some(state_node) => {
-                            file_helper::serialize_to_file(
-                                block_hash_mapping_file,
-                                &node_hash,
-                                &state_node,
-                            )
+                client.get_state_node_by_node_hash(node_hash).map(|op| {
+                    op.map(|state_node| {
+                        file_helper
+                            .serialize_to_file(block_hash_mapping_file, &node_hash, &state_node)
                             .unwrap();
-                            Some(state_node)
-                        }
+                        state_node
                     })
+                })
             }),
         }
     }
