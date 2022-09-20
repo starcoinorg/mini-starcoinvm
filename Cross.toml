@@ -1,7 +1,0 @@
-[build]
-default-target="mips-unknown-linux-musl"
-
-[target.mips-unknown-linux-musl.env]
-passthrough = [
-    "RUST_BACKTRACE=1"
-]
