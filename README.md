@@ -18,13 +18,18 @@ you can get more details by typing -h:
 cargo run -- -h
 ```
 
-You can make cross-compile to mips like this:
+## Cross Compile
 
+1. Add mips-unknown-linux-musl supports:
 ```shell
-cross build --release -v --no-default-features --features from_file
+rustup target add mips-unknown-linux-musl
 ```
-
-And find the bin at:
+2. Download musl toolchain from [musl.cc](https://musl.cc): mips-linux-musl-cross
+3. Release:
+```shell
+cargo build --target mips-unknown-linux-musl --release --no-default-features --features from_file
+```
+4. Find the bin:
 ```text
 target\mips-unknown-linux-musl\release
 ```
