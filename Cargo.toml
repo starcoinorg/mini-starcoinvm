@@ -3,6 +3,11 @@ name = "mini-starcoin-vm"
 version = "0.1.0"
 edition = "2021"
 
+[profile.release]
+strip=true
+lto=true
+panic = "abort"
+
 [dependencies]
 anyhow = "1.0.41"
 serde = {version = "1.0.130", default-features = false}
