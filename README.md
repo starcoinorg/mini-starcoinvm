@@ -10,7 +10,7 @@ cargo build --release
 
 Then, you can validate the data in file mode
 ```shell
-cargo build --release --no-default-features --features from_file
+cargo build --release --no-default-features
 ```
 
 you can get more details by typing -h:
@@ -27,7 +27,7 @@ rustup target add mips-unknown-linux-musl
 2. Download musl toolchain from [musl.cc](https://musl.cc): mips-linux-musl-cross
 3. Release:
 ```shell
-cargo build --target mips-unknown-linux-musl --release --no-default-features --features from_file
+cargo build --target mips-unknown-linux-musl --release --no-default-features
 ```
 4. Find the bin:
 ```text

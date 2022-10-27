@@ -28,6 +28,5 @@ starcoin-vm-runtime = {git = "https://github.com/starcoinorg/starcoin", rev = "c
 [features]
 default = ["from_remote"]
 from_remote = ["starcoin-rpc-client"]
-from_file = []
 test = ["starcoin-rpc-client"]
 
