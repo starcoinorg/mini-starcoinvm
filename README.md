@@ -31,5 +31,5 @@ cargo build --target mips-unknown-linux-musl --release --no-default-features
 ```
 4. Find the bin:
 ```text
-target\mips-unknown-linux-musl\release
+target/mips-unknown-linux-musl/release
 ```
